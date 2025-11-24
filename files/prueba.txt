@@ -1,1 +1,5 @@
-Hola , estamos probando un .txt desde el servidor! :D
+Este es un archivo de texto de prueba
+para el servidor HTTP multiproceso.
+Linea 1
+Linea 2
+Linea 3
