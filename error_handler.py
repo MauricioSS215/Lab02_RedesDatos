@@ -5,7 +5,6 @@ class HTTPErrorHandler:
     
     @staticmethod
     def bad_request(conn, message="Solicitud mal formada"):
-        """400 Bad Request"""
         body = message
         response = (
             "HTTP/1.1 400 Bad Request\r\n"
@@ -21,7 +20,6 @@ class HTTPErrorHandler:
 
     @staticmethod
     def not_found(conn, filename):
-        """404 Not Found"""
         body = f"Recurso no encontrado: {filename}"
         response = (
             "HTTP/1.1 404 Not Found\r\n"
@@ -37,7 +35,6 @@ class HTTPErrorHandler:
 
     @staticmethod
     def method_not_implemented(conn, method):
-        """501 Not Implemented"""
         body = f"Metodo no implementado: {method} (solo GET esta soportado)."
         response = (
             "HTTP/1.1 501 Not Implemented\r\n"
@@ -53,7 +50,6 @@ class HTTPErrorHandler:
 
     @staticmethod
     def http_version_not_supported(conn, version):
-        """505 HTTP Version Not Supported"""
         body = f"Version HTTP no soportada: {version}"
         response = (
             "HTTP/1.1 505 HTTP Version Not Supported\r\n"
@@ -69,7 +65,6 @@ class HTTPErrorHandler:
 
     @staticmethod
     def internal_server_error(conn, error_message):
-        """500 Internal Server Error"""
         body = f"Error interno del servidor: {error_message}"
         response = (
             "HTTP/1.1 500 Internal Server Error\r\n"
@@ -85,12 +80,11 @@ class HTTPErrorHandler:
 
     @staticmethod
     def success_response(conn, content_type, body_bytes):
-        """200 OK - Respuesta exitosa"""
         header = (
             "HTTP/1.1 200 OK\r\n"
             f"Content-Type: {content_type}\r\n"
             f"Content-Length: {len(body_bytes)}\r\n"
-            "Connection: keep-alive\r\n"
+            "Connection: close\r\n"
             "\r\n"
         )
         conn.sendall(header.encode() + body_bytes)
