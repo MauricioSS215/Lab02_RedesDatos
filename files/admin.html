@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de Control - Servidor HTTP</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f8f9fa;
+        color: #333;
+      }
+      .header {
+        background: #2c3e50;
+        color: white;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .controls {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #3498db;
+      }
+      .stats {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #27ae60;
+      }
+      .clients-list {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #e74c3c;
+      }
+      button {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        margin: 8px 8px 8px 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background-color 0.2s;
+      }
+      button:hover {
+        background: #2980b9;
+      }
+      button.danger {
+        background: #e74c3c;
+      }
+      button.danger:hover {
+        background: #c0392b;
+      }
+      button.success {
+        background: #27ae60;
+      }
+      button.success:hover {
+        background: #219a52;
+      }
+      button.warning {
+        background: #f39c12;
+      }
+      button.warning:hover {
+        background: #d35400;
+      }
+      .client-item {
+        border: 1px solid #e1e8ed;
+        padding: 20px;
+        margin: 15px 0;
+        border-radius: 6px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: box-shadow 0.2s;
+      }
+      .client-item:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .client-info {
+        flex-grow: 1;
+      }
+      .client-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .status-connected {
+        color: #27ae60;
+        font-weight: bold;
+      }
+      .status-disconnected {
+        color: #e74c3c;
+        font-weight: bold;
+      }
+      .refresh-info {
+        color: #7f8c8d;
+        font-size: 13px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #ecf0f1;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 15px;
+      }
+      .stat-card {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 6px;
+        text-align: center;
+        border-left: 4px solid #3498db;
+      }
+      .stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+      .stat-label {
+        color: #7f8c8d;
+        font-size: 0.9em;
+        margin-top: 5px;
+      }
+      h1,
+      h2,
+      h3 {
+        margin-top: 0;
+      }
+      .client-name {
+        font-weight: bold;
+        color: #2c3e50;
+      }
+      .client-details {
+        color: #7f8c8d;
+        font-size: 0.9em;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Panel de Control - Servidor HTTP</h1>
+      <p>Gestiona las conexiones de clientes en tiempo real</p>
+    </div>
+
+    <div class="controls">
+      <h2>Acciones Globales</h2>
+      <button onclick="disconnectAll()" class="danger">
+        Desconectar Todos los Clientes
+      </button>
+      <button onclick="getStats()" class="success">
+        Actualizar Estadisticas
+      </button>
+      <button onclick="broadcastMessage()" class="warning">
+        Enviar Mensaje a Todos
+      </button>
+      <button onclick="location.reload()">Recargar Pagina</button>
+      <button onclick="startAutoRefresh()" class="success">
+        Iniciar Auto-Actualizacion
+      </button>
+      <button onclick="stopAutoRefresh()" class="danger">
+        Detener Auto-Actualizacion
+      </button>
+    </div>
+
+    <div class="stats">
+      <h2>Estadisticas del Servidor</h2>
+      <div id="stats-content">
+        <p>Cargando estadisticas...</p>
+      </div>
+    </div>
+
+    <div class="clients-list">
+      <h2>Clientes Conectados</h2>
+      <div id="clients-content">
+        <p>Cargando lista de clientes...</p>
+      </div>
+      <div class="refresh-info">
+        Ultima actualizacion: <span id="last-update">--:--:--</span> |
+        Auto-actualizacion: <span id="auto-refresh-status">Desactivada</span>
+      </div>
+    </div>
+
+    <script>
+      let autoRefreshInterval = null;
+
+      function updateTimestamp() {
+        const now = new Date();
+        document.getElementById("last-update").textContent =
+          now.toLocaleTimeString();
+      }
+
+      function startAutoRefresh() {
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+        }
+        autoRefreshInterval = setInterval(getStats, 5000);
+        document.getElementById("auto-refresh-status").textContent =
+          "Activada (5s)";
+      }
+
+      function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+        }
+        document.getElementById("auto-refresh-status").textContent =
+          "Desactivada";
+      }
+
+      async function getStats() {
+        try {
+          const response = await fetch("/admin-stats");
+          const data = await response.json();
+
+          // Actualizar estadisticas
+          document.getElementById("stats-content").innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">${data.total_clients}</div>
+                            <div class="stat-label">Clientes Totales</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${data.connected_clients}</div>
+                            <div class="stat-label">Clientes Conectados</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${data.disconnected_clients}</div>
+                            <div class="stat-label">Clientes Desconectados</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${data.total_requests}</div>
+                            <div class="stat-label">Total de Requests</div>
+                        </div>
+                    </div>
+                `;
+
+          // Actualizar lista de clientes
+          let clientsHTML = "";
+          if (data.clients_info && data.clients_info.length > 0) {
+            data.clients_info.forEach((client) => {
+              const statusClass = client.connected
+                ? "status-connected"
+                : "status-disconnected";
+              const statusText = client.connected
+                ? "CONECTADO"
+                : "DESCONECTADO";
+
+              clientsHTML += `
+                            <div class="client-item">
+                                <div class="client-info">
+                                    <div class="client-name">${
+                                      client.name
+                                    }</div>
+                                    <div class="client-details">
+                                        Direccion: ${client.address} | 
+                                        Requests: ${client.request_count} | 
+                                        Ultima actividad: ${
+                                          client.last_activity
+                                        }
+                                    </div>
+                                    <div class="${statusClass}">Estado: ${statusText}</div>
+                                </div>
+                                <div class="client-actions">
+                                    ${
+                                      client.connected
+                                        ? `
+                                        <button onclick="disconnectClient(${client.client_id})" class="danger">Desconectar</button>
+                                    `
+                                        : ""
+                                    }
+                                    <button onclick="getClientDetails(${
+                                      client.client_id
+                                    })">Detalles</button>
+                                </div>
+                            </div>
+                        `;
+            });
+          } else {
+            clientsHTML = "<p>No hay clientes conectados</p>";
+          }
+
+          document.getElementById("clients-content").innerHTML = clientsHTML;
+          updateTimestamp();
+        } catch (error) {
+          console.error("Error obteniendo estadisticas:", error);
+          document.getElementById("stats-content").innerHTML =
+            '<p style="color: #e74c3c;">Error cargando estadisticas</p>';
+        }
+      }
+
+      async function disconnectAll() {
+        if (
+          confirm("¿Está seguro de que desea desconectar todos los clientes?")
+        ) {
+          try {
+            const response = await fetch("/admin-disconnect-all", {
+              method: "POST",
+            });
+            const result = await response.json();
+            alert(result.message);
+            getStats(); // Actualizar la vista
+          } catch (error) {
+            alert("Error desconectando clientes: " + error);
+          }
+        }
+      }
+
+      async function disconnectClient(clientId) {
+        if (confirm("¿Desconectar este cliente?")) {
+          try {
+            const response = await fetch(
+              `/admin-disconnect-client/${clientId}`,
+              { method: "POST" }
+            );
+            const result = await response.json();
+            alert(result.message);
+            getStats(); // Actualizar la vista
+          } catch (error) {
+            alert("Error desconectando cliente: " + error);
+          }
+        }
+      }
+
+      async function broadcastMessage() {
+        const message = prompt(
+          "Ingrese el mensaje para enviar a todos los clientes:"
+        );
+        if (message) {
+          try {
+            const response = await fetch("/admin-broadcast", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ message: message }),
+            });
+            const result = await response.json();
+            alert(result.message);
+          } catch (error) {
+            alert("Error enviando mensaje: " + error);
+          }
+        }
+      }
+
+      async function getClientDetails(clientId) {
+        try {
+          const response = await fetch(`/admin-client-details/${clientId}`);
+          const client = await response.json();
+
+          alert(
+            `Detalles del Cliente:\n\n` +
+              `Nombre: ${client.name}\n` +
+              `Direccion: ${client.address}\n` +
+              `Estado: ${client.connected ? "CONECTADO" : "DESCONECTADO"}\n` +
+              `Total Requests: ${client.request_count}\n` +
+              `Ultima Actividad: ${client.last_activity}`
+          );
+        } catch (error) {
+          alert("Error obteniendo detalles del cliente");
+        }
+      }
+
+      // Cargar estadisticas al iniciar
+      document.addEventListener("DOMContentLoaded", function () {
+        getStats();
+        startAutoRefresh(); // Iniciar auto-actualizacion automaticamente
+      });
+    </script>
+  </body>
+</html>
