@@ -224,8 +224,37 @@ def manejar_cliente(conn, addr, client_id):
 
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((HOST, PORT))
-    server.listen(5)
+    server.listen(10)
+
+    print("=" * 60)
+    print("SERVIDOR HTTP - CONEXIONES PERSISTENTES INDEFINIDAS")
+    print(f"Escuchando en: {HOST}:{PORT}")
+    print(f"Directorio base: {BASE_DIR}")
+    print(f"MAC del servidor: {obtener_direccion_mac()}")
+    print("=" * 60)
+
+    # Comando thread para manejar desconexiones
+    def comando_handler():
+        while True:
+            try:
+                cmd = input("\nComando (q=quit, stats=estadisticas, disconnect=desconectar todos): ").strip().lower()
+                if cmd == 'q':
+                    print("Cerrando servidor...")
+                    clients_handler.disconnect_all_clients()
+                    os._exit(0)
+                elif cmd == 'stats':
+                    clients_handler.print_stats()
+                elif cmd == 'disconnect':
+                    disconnected = clients_handler.disconnect_all_clients()
+                    print(f"Desconectados {disconnected} clientes")
+                elif cmd == 'broadcast':
+                    msg = input("Mensaje para broadcast: ")
+                    sent = clients_handler.broadcast_message(msg)
+                    print(f"Mensaje enviado a {sent} clientes")
+            except:
+                break
 
     print("=" * 60)
     print("SERVIDOR HTTP MULTIHILO - ANALISIS DE CAPAS DE RED")
